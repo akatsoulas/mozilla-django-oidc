@@ -115,8 +115,8 @@ class OIDCLogoutView(View):
     def dispatch(self, request, *args, **kwargs):
         """Log out the user."""
 
+        logout_url = self.redirect_url
         if request.user.is_authenticated():
-            logout_url = self.redirect_url
 
             # Check if a method exists to build the url to logout the user from the OP
             logout_from_op = import_from_settings('OIDC_OP_LOGOUT_URL_METHOD', '')
