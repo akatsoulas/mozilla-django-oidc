@@ -54,10 +54,6 @@ class OIDCAuthenticationCallbackView(View):
         """Callback handler for OIDC authorization code flow"""
 
         nonce = request.session.get('oidc_nonce')
-        if nonce:
-            # Make sure that nonce is not used twice
-            del request.session['oidc_nonce']
-
         if request.GET.get('error'):
             # Ouch! Something important failed.
             # Make sure the user doesn't get to continue to be logged in
@@ -79,6 +75,10 @@ class OIDCAuthenticationCallbackView(View):
             if request.GET['state'] != request.session['oidc_state']:
                 msg = 'Session `oidc_state` does not match the OIDC callback state'
                 raise SuspiciousOperation(msg)
+
+            if nonce:
+                # Make sure that nonce is not used twice
+                del request.session['oidc_nonce']
 
             self.user = auth.authenticate(**kwargs)
 
@@ -134,7 +134,8 @@ class OIDCAuthenticationRequestView(View):
 
     def get(self, request):
         """OIDC client authentication initialization HTTP endpoint"""
-        state = get_random_string(self.get_settings('OIDC_STATE_SIZE', 32))
+        state = (request.session.get('oidc_state') or
+                    get_random_string(self.get_settings('OIDC_STATE_SIZE', 32)))
         redirect_field_name = self.get_settings('OIDC_REDIRECT_FIELD_NAME', 'next')
         reverse_url = self.get_settings('OIDC_AUTHENTICATION_CALLBACK_URL',
                                         'oidc_authentication_callback')
@@ -153,7 +154,8 @@ class OIDCAuthenticationRequestView(View):
         params.update(self.get_extra_params(request))
 
         if self.get_settings('OIDC_USE_NONCE', True):
-            nonce = get_random_string(self.get_settings('OIDC_NONCE_SIZE', 32))
+            nonce = (request.session.get('oidc_nonce') or
+                        get_random_string(self.get_settings('OIDC_NONCE_SIZE', 32)))
             params.update({
                 'nonce': nonce
             })
